@@ -1,5 +1,13 @@
 import type {VFile} from './lib/index.js'
 
+export {ChangeChain, createChangeChain} from './lib/change-map.js'
+export type {
+  ChangeMapEdit,
+  ChangeMapOptions,
+  ChangeMapPoint,
+  ChangeMapPosition
+} from './lib/change-map.js'
+
 // See: <https://github.com/sindresorhus/type-fest/blob/main/source/empty-object.d.ts>
 declare const emptyObjectSymbol: unique symbol
 
