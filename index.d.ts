@@ -8,6 +8,17 @@ export type {Options as MessageOptions} from 'vfile-message'
 
 export {VFile} from './lib/index.js'
 
+export {EditChain, mapMessages} from './lib/edit-chain.js'
+
+export type {
+  TextEdit,
+  Point,
+  Range,
+  MappedOffset,
+  MappedPoint,
+  MappedRange
+} from './lib/edit-chain.js'
+
 // To do: next major: remove.
 // Deprecated names (w/ prefix):
 export type {

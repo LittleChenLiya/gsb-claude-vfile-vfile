@@ -159,7 +159,8 @@ Yields:
 
 ## API
 
-This package exports the identifier [`VFile`][api-vfile].
+This package exports the identifiers [`VFile`][api-vfile],
+[`EditChain`][api-edit-chain], and [`mapMessages`][api-map-messages].
 There is no default export.
 
 ### `VFile(options?)`
@@ -348,6 +349,103 @@ Serialize the file.
 ###### Returns
 
 Serialized file (`string`).
+
+### `EditChain`
+
+Explicit text-change position mapping (class).
+
+An `EditChain` records an ordered chain of text edits and maps diagnostic
+positions (points, ranges, UTF-16 offsets, or UTF-8 byte offsets) from any
+earlier chain version to the current text, or marks them as deleted.
+Mapping is structural (offset arithmetic); it never guesses by searching
+for identical words in the new text.
+
+The chain starts at version `0` (the original text).
+Each edit is located by *post-execution state*: its offsets refer to the
+text after all earlier edits were applied, and pushing it bumps the
+version by one.
+Overlapping edits are rejected before they are applied.
+Columns are always UTF-16 code units (an emoji counts as 2 columns, not 4
+bytes); UTF-8 byte offsets are handled separately through
+`chain.mapByteOffset`.
+CRLF line endings and multi-line ranges are preserved.
+
+###### Example
+
+```js
+import {EditChain, mapMessages} from 'vfile'
+
+const chain = new EditChain('fix \u{1F4A9} bug\r\nbad error here\r\n')
+chain.push({offset: 0, endOffset: 0, text: '>> '}) // version 1
+chain.push({offset: 15, endOffset: 29, text: ''}) // version 2: delete error
+
+const view = mapMessages(
+  {messages: [{reason: 'bad', line: 2, column: 1, offset: 12}]},
+  chain,
+  0 // positions refer to version 0
+)
+// => [{reason: 'bad', line: 2, column: 1, offset: 15, deleted: true, ...}]
+```
+
+A complete three-edit example (insert at the start of the first line,
+delete the text that contains an error, insert after an emoji) is in
+[`examples/three-edits.js`](examples/three-edits.js); run it with:
+
+```sh
+node examples/three-edits.js
+```
+
+### `new EditChain(text)`
+
+Create a chain for `text` (`string`), which becomes version `0`.
+
+### `chain.push(edit)`
+
+Append an edit (`{offset, endOffset, text}`), located by post-execution
+state, and return the new version (`number`).
+Throws on out-of-bounds, empty, or overlapping edits.
+
+### `chain.version`
+
+Current chain version (`number`).
+
+### `chain.text`
+
+Current text, after all edits (`string`).
+
+### `chain.textAt(version)`
+
+Text snapshot at `version` (`string`).
+
+### `chain.mapOffset(offset[, fromVersion])`
+
+Map a UTF-16 offset to the current text.
+Returns `{offset, deleted, version}`.
+
+### `chain.mapByteOffset(byteOffset[, fromVersion])`
+
+Map a UTF-8 byte offset to the current text (separate from UTF-16
+columns; must be on a character boundary).
+Returns `{offset, deleted, version}`.
+
+### `chain.mapPoint(point[, fromVersion])`
+
+Map a 1-based `{line, column}` point (UTF-16 columns) to the current
+text.
+Returns `{line, column, deleted, version}`.
+
+### `chain.mapRange(range[, fromVersion])`
+
+Map a (possibly multi-line) `{start, end}` range to the current text.
+Returns `{start, end, deleted, version}`.
+
+### `mapMessages(file, chain[, fromVersion])`
+
+Create a new view of messages with positions mapped through `chain`
+(`Array<object>`).
+The old file and its messages are never mutated; messages inside deleted
+or replaced text are kept and marked with `deleted: true`, and each
+mapped message is bound to the chain `version` it was created from.
 
 ### `Compatible`
 
@@ -760,6 +858,10 @@ for contributing commits since!
 [api-vfile-messages]: #filemessages
 
 [api-vfile-message]: #vfilemessagereason-options
+
+[api-edit-chain]: #editchain
+
+[api-map-messages]: #mapmessagesfile-chain-fromversion
 
 [api-vfile]: #vfileoptions
 
