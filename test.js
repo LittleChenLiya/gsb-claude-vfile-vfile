@@ -422,6 +422,94 @@ test('new VFile(options?)', async function (t) {
     )
   })
 
+  await t.test('#undoPath()', function () {
+    const fp = path.join('~', 'alpha', 'bravo.md')
+    const file = new VFile({path: fp, value: 'alpha'})
+
+    file.message('Foo')
+
+    file.path = path.join('~', 'charlie', 'delta.txt')
+    file.extname = '.md'
+
+    assert.deepEqual(
+      file.history,
+      [
+        fp,
+        path.join('~', 'charlie', 'delta.txt'),
+        path.join('~', 'charlie', 'delta.md')
+      ],
+      'should record changes'
+    )
+
+    file.undoPath()
+
+    assert.equal(
+      file.path,
+      path.join('~', 'charlie', 'delta.txt'),
+      'should restore the previous `path` (1)'
+    )
+    assert.equal(
+      file.dirname,
+      path.join('~', 'charlie'),
+      'should restore `dirname` (1)'
+    )
+    assert.equal(file.basename, 'delta.txt', 'should restore `basename` (1)')
+    assert.equal(file.stem, 'delta', 'should restore `stem` (1)')
+    assert.equal(file.extname, '.txt', 'should restore `extname` (1)')
+    assert.equal(file.history.length, 2, 'should shorten `history` (1)')
+    assert.equal(file.value, 'alpha', 'should not change `value` (1)')
+    assert.equal(file.messages.length, 1, 'should not change `messages` (1)')
+
+    file.undoPath()
+
+    assert.equal(file.path, fp, 'should restore the previous `path` (2)')
+    assert.equal(file.dirname, path.join('~', 'alpha'), 'should restore `dirname` (2)')
+    assert.equal(file.basename, 'bravo.md', 'should restore `basename` (2)')
+    assert.equal(file.stem, 'bravo', 'should restore `stem` (2)')
+    assert.equal(file.extname, '.md', 'should restore `extname` (2)')
+    assert.equal(file.history.length, 1, 'should shorten `history` (2)')
+    assert.equal(file.value, 'alpha', 'should not change `value` (2)')
+    assert.equal(file.messages.length, 1, 'should not change `messages` (2)')
+
+    assert.deepEqual(
+      file.history,
+      [fp],
+      'should not record the undo itself as a change'
+    )
+
+    file.undoPath()
+
+    assert.equal(file.path, undefined, 'should undo the initial `path`')
+    assert.deepEqual(file.history, [], 'should empty `history`')
+
+    assert.throws(
+      function () {
+        file.undoPath()
+      },
+      /Error: Cannot undo path change: `history` is empty/,
+      'should throw without history'
+    )
+
+    assert.equal(file.path, undefined, 'should not change `path` when throwing')
+    assert.deepEqual(file.history, [], 'should not change `history` when throwing')
+
+    const empty = new VFile()
+
+    assert.throws(
+      function () {
+        empty.undoPath()
+      },
+      /Error: Cannot undo path change: `history` is empty/,
+      'should throw on a file without a path'
+    )
+
+    assert.deepEqual(
+      empty,
+      new VFile(),
+      'should not change the file when throwing'
+    )
+  })
+
   await t.test('#message(reason[, position][, origin])', function () {
     const fp = path.join('~', 'example.md')
 

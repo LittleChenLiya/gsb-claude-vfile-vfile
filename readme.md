@@ -33,6 +33,7 @@ metadata about files (such as its `path` and `value`) and lint
   * [`file.extname`](#fileextname)
   * [`file.path`](#filepath)
   * [`file.stem`](#filestem)
+  * [`VFile#undoPath()`](#vfileundopath)
   * [`VFile#fail(reason[, options])`](#vfilefailreason-options)
   * [`VFile#info(reason[, options])`](#vfileinforeason-options)
   * [`VFile#message(reason[, options])`](#vfilemessagereason-options)
@@ -263,6 +264,19 @@ Get or set the stem (basename w/o extname) (`string?`, example: `'index.min'`).
 Cannot contain path separators (`'/'` on unix, macOS, and browsers, `'\'` on
 windows).
 Cannot be nullified.
+
+### `VFile#undoPath()`
+
+Undo the most recent path change.
+
+Restores the previous path recorded in [`file.history`][api-file-history],
+which also restores the `basename`, `dirname`, and `extname` views.
+The undo itself is not recorded as a new change in `file.history`.
+`value` and `messages` are not affected.
+
+###### Throws
+
+Throws when there is no path history to undo.
 
 ### `VFile#fail(reason[, options])`
 
@@ -758,6 +772,8 @@ for contributing commits since!
 [governance]: https://github.com/unifiedjs/collective
 
 [api-vfile-messages]: #filemessages
+
+[api-file-history]: #filehistory
 
 [api-vfile-message]: #vfilemessagereason-options
 
