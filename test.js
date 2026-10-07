@@ -422,6 +422,105 @@ test('new VFile(options?)', async function (t) {
     )
   })
 
+  await t.test('#undo()', function () {
+    const first = path.join('~', 'alpha', 'readme.md')
+    const second = path.join('~', 'bravo', 'readme.md')
+    const third = path.join('~', 'bravo', 'notes.txt')
+
+    let file = new VFile({path: first, value: 'alpha'})
+    const message = file.message('One')
+
+    file.path = second
+    file.path = third
+
+    assert.deepEqual(
+      file.history,
+      [first, second, third],
+      'should record two path changes'
+    )
+    assert.equal(file.path, third)
+    assert.equal(file.dirname, path.join('~', 'bravo'))
+    assert.equal(file.basename, 'notes.txt')
+    assert.equal(file.stem, 'notes')
+    assert.equal(file.extname, '.txt')
+
+    assert.equal(file.undo(), third, 'should return the undone path')
+
+    assert.deepEqual(
+      file.history,
+      [first, second],
+      'should drop the last path (1)'
+    )
+    assert.equal(file.history.length, 2, 'should have history length 2 (1)')
+    assert.equal(file.path, second, 'should restore `path` (1)')
+    assert.equal(
+      file.dirname,
+      path.join('~', 'bravo'),
+      'should restore `dirname` (1)'
+    )
+    assert.equal(file.basename, 'readme.md', 'should restore `basename` (1)')
+    assert.equal(file.stem, 'readme', 'should restore `stem` (1)')
+    assert.equal(file.extname, '.md', 'should restore `extname` (1)')
+
+    assert.equal(file.undo(), second, 'should return the previous path too')
+
+    assert.deepEqual(file.history, [first], 'should drop the last path (2)')
+    assert.equal(file.history.length, 1, 'should have history length 1 (2)')
+    assert.equal(file.path, first, 'should restore `path` (2)')
+    assert.equal(
+      file.dirname,
+      path.join('~', 'alpha'),
+      'should restore `dirname` (2)'
+    )
+    assert.equal(file.basename, 'readme.md', 'should restore `basename` (2)')
+    assert.equal(file.stem, 'readme', 'should restore `stem` (2)')
+    assert.equal(file.extname, '.md', 'should restore `extname` (2)')
+
+    assert.equal(file.value, 'alpha', 'should not change contents when undoing')
+    assert.deepEqual(
+      file.messages,
+      [message],
+      'should not change messages when undoing'
+    )
+    assert.equal(
+      message.file,
+      first,
+      'should not rewrite the path on existing messages'
+    )
+
+    // Undo the initial path too.
+    assert.equal(file.undo(), first, 'should undo the original path')
+    assert.deepEqual(file.history, [], 'should end with empty history')
+    assert.equal(file.history.length, 0, 'should have history length 0')
+    assert.equal(file.path, undefined, 'should have no `path`')
+    assert.equal(file.dirname, undefined, 'should have no `dirname`')
+    assert.equal(file.basename, undefined, 'should have no `basename`')
+    assert.equal(file.stem, undefined, 'should have no `stem`')
+    assert.equal(file.extname, undefined, 'should have no `extname`')
+    assert.equal(file.value, 'alpha', 'should still keep the contents')
+    assert.equal(file.messages.length, 1, 'should still keep the messages')
+
+    assert.throws(
+      function () {
+        file.undo()
+      },
+      /Error: Cannot undo: `history` is empty/,
+      'should throw when there is no history'
+    )
+
+    assert.deepEqual(file.history, [], 'should not change empty history')
+    assert.equal(file.path, undefined, 'should still have no `path`')
+    assert.equal(file.value, 'alpha', 'should still keep the contents')
+    assert.equal(file.messages.length, 1, 'should still keep the messages')
+
+    // Setting the same path does not add history, so there is nothing to undo.
+    file = new VFile({path: first})
+    file.path = first
+    assert.deepEqual(file.history, [first], 'should ignore duplicate paths')
+    assert.equal(file.undo(), first, 'should undo the single path')
+    assert.deepEqual(file.history, [], 'should result in empty history')
+  })
+
   await t.test('#message(reason[, position][, origin])', function () {
     const fp = path.join('~', 'example.md')
 

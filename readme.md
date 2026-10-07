@@ -264,6 +264,40 @@ Cannot contain path separators (`'/'` on unix, macOS, and browsers, `'\'` on
 windows).
 Cannot be nullified.
 
+### `VFile#undo()`
+
+Undo the last change to the path.
+
+The last entry in `file.history` is removed, so `file.path`
+(and the `basename`, `dirname`, `extname`, and `stem` views based on it)
+reverts to the previous path.
+Undoing does not add a new entry to `history`.
+The contents (`file.value`) and `file.messages` are not affected.
+
+###### Returns
+
+The undone (previous current) path (`string`).
+
+###### Throws
+
+When there is no path in `history` to undo (`Error`).
+
+###### Example
+
+```js
+const file = new VFile({path: '~/example.txt'})
+
+file.path = '~/example.md'
+file.path = '~/index.text'
+
+console.log(file.history) // => ['~/example.txt', '~/example.md', '~/index.text']
+
+file.undo()
+
+console.log(file.history) // => ['~/example.txt', '~/example.md']
+console.log(file.path) // => '~/example.md'
+```
+
 ### `VFile#fail(reason[, options])`
 
 Create a fatal message for `reason` associated with the file.
