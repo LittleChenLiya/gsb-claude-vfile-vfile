@@ -1,5 +1,6 @@
 /**
  * @import {Root} from 'mdast'
+ * @import {Position} from 'unist'
  */
 
 import assert from 'node:assert/strict'
@@ -607,6 +608,89 @@ test('new VFile(options?)', async function (t) {
     assert.equal(message.line, 1)
     assert.equal(message.column, 3)
     assert.deepEqual(message.place, {line: 1, column: 3})
+  })
+
+  await t.test('#sortedMessages()', function () {
+    const fp = path.join('~', 'example.md')
+    const file = new VFile({path: fp})
+
+    // Five messages with mixed positions:
+    // 1. known point (no end position), sorts by line/column.
+    const late = file.message('late', {line: 3, column: 5})
+    // 2. unknown position, sorts last.
+    const unknown = file.message('unknown')
+    // 3 + 4. same known position, insertion order must be kept.
+    const first = file.message('first', {line: 1, column: 2})
+    const second = file.message('second', {line: 1, column: 2})
+    // 5. known position but associated with another file: its offsets do not
+    // apply to this file, so it must sort last, not by position.
+    const other = new VFile({path: path.join('~', 'other.md')})
+    const crossFile = other.message('cross-file', {line: 1, column: 1})
+    file.messages.push(crossFile)
+
+    const original = [...file.messages]
+    const sorted = file.sortedMessages()
+
+    assert.deepEqual(
+      sorted,
+      [first, second, late, unknown, crossFile],
+      'should sort by position, keep insertion order for equal positions, and place unknown and cross-file messages last'
+    )
+
+    assert.notEqual(sorted, file.messages, 'should return a new array')
+
+    assert.deepEqual(
+      file.messages,
+      original,
+      'should not change the `messages` array'
+    )
+
+    assert.deepEqual(
+      file.messages.map(String),
+      [
+        fp + ':3:5: late',
+        fp + ':1:1: unknown',
+        fp + ':1:2: first',
+        fp + ':1:2: second',
+        path.join('~', 'other.md') + ':1:1: cross-file'
+      ],
+      'should keep the original insertion order in `messages`'
+    )
+
+    assert.deepEqual(
+      sorted.map(String),
+      [
+        fp + ':1:2: first',
+        fp + ':1:2: second',
+        fp + ':3:5: late',
+        fp + ':1:1: unknown',
+        path.join('~', 'other.md') + ':1:1: cross-file'
+      ],
+      'should expose a stable sorted view'
+    )
+
+    // A position without an end should still sort.
+    const noEnd = new VFile()
+    // Cast: a `Position` without `end` is not a valid unist position, but
+    // the runtime supports it.
+    const bravoPlace = /** @type {Position} */ ({start: {line: 2, column: 1}})
+    const alphaPlace = /** @type {Position} */ ({start: {line: 1, column: 1}})
+    noEnd.message('bravo', {place: bravoPlace})
+    noEnd.message('alpha', {place: alphaPlace})
+
+    assert.deepEqual(
+      noEnd.sortedMessages().map(function (message) {
+        return message.reason
+      }),
+      ['alpha', 'bravo'],
+      'should sort messages that have no end position'
+    )
+
+    assert.deepEqual(
+      new VFile().sortedMessages(),
+      [],
+      'should work without messages'
+    )
   })
 })
 

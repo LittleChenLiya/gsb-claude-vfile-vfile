@@ -36,6 +36,7 @@ metadata about files (such as its `path` and `value`) and lint
   * [`VFile#fail(reason[, options])`](#vfilefailreason-options)
   * [`VFile#info(reason[, options])`](#vfileinforeason-options)
   * [`VFile#message(reason[, options])`](#vfilemessagereason-options)
+  * [`VFile#sortedMessages()`](#vfilesortedmessages)
   * [`VFile#toString(encoding?)`](#vfiletostringencoding)
   * [`Compatible`](#compatible)
   * [`Data`](#data)
@@ -330,6 +331,21 @@ The message is added to the `messages` field on `file`.
 ###### Returns
 
 Message ([`VFileMessage`][vmessage]).
+
+### `VFile#sortedMessages()`
+
+Get a sorted view of the messages associated with the file.
+
+Messages are ordered by their start position (line, then column).
+Messages without a known position, and messages associated with a different
+file (whose offsets do not apply to this file), are placed at the end.
+Messages that compare equally keep their original insertion order.
+
+The `messages` field itself is not changed: a new array is returned.
+
+###### Returns
+
+Sorted copy of `messages` (`Array<VFileMessage>`).
 
 ### `VFile#toString(encoding?)`
 
