@@ -608,6 +608,59 @@ test('new VFile(options?)', async function (t) {
     assert.equal(message.column, 3)
     assert.deepEqual(message.place, {line: 1, column: 3})
   })
+
+  await t.test('#sortedMessages()', function () {
+    const fp = path.join('~', 'example.md')
+    const file = new VFile({path: fp})
+
+    // Five messages with mixed positions, added out of order:
+    // a known position later in the file,
+    file.message('bravo', {line: 3, column: 2, offset: 20})
+    // no position at all,
+    file.message('unknown')
+    // an earlier position without an end (only a start),
+    // @ts-expect-error: a position without an `end` is fine at runtime.
+    file.message('alpha', {place: {start: {line: 1, column: 5, offset: 4}}})
+    // a position in another file, which must not be sorted by the offsets
+    // of this file,
+    const other = new VFile({path: path.join('~', 'other.md')})
+    const crossfile = other.message('crossfile', {
+      line: 1,
+      column: 1,
+      offset: 0
+    })
+    file.messages.push(crossfile)
+    // and a message at the same position as `alpha` (insertion order wins).
+    file.message('alpha-tie', {line: 1, column: 5, offset: 4})
+
+    const sorted = file.sortedMessages()
+
+    assert.ok(Array.isArray(sorted), 'should return an array')
+    assert.notEqual(sorted, file.messages, 'should return a new array')
+
+    assert.deepEqual(
+      sorted.map(function (message) {
+        return message.reason
+      }),
+      ['alpha', 'alpha-tie', 'bravo', 'unknown', 'crossfile'],
+      'should sort by known position, keep insertion order on ties, and ' +
+        'place unknown positions and cross-file messages last'
+    )
+
+    assert.deepEqual(
+      file.messages.map(function (message) {
+        return message.reason
+      }),
+      ['bravo', 'unknown', 'alpha', 'crossfile', 'alpha-tie'],
+      'should not change the original `messages` array'
+    )
+
+    assert.equal(
+      sorted.indexOf(crossfile),
+      4,
+      'should not sort cross-file messages by their position'
+    )
+  })
 })
 
 // Mostly from `path-browserify` with some extra tests to reach coverage, and
